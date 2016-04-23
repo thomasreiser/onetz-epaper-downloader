@@ -42,7 +42,7 @@ import platform
 
 
 # Interne Konstanten
-LOGIN_URL = 'https://service.onetz.de/register/login/' # Oberpfalznetz Login-URL
+LOGIN_URL = 'https://service.onetz.de/register/login/' # Onetz Login-URL
 EPAPER_DOMAIN = 'http://service.onetz.de' # Domain des E-Paper-Dienstes
 EPAPER_LINK_START = '/epaper/validation/index.adp?tmp=' # Start des Links zum E-Paper ("Ihr E-Paper")
 EPAPER_PDF_LINK_START = 'http://epaper.oberpfalznetz.de/download/?edition=%s&date=%s' # Links zum E-Paper Download der Gesamtausgabe
@@ -55,7 +55,7 @@ DEFAULT_MAX_SLEEP = 5 # Maximale Wartezeit/Sleep zwischen den Requests in Sekund
 
 
 # Programmlogik
-def download(configFile, timestamp):
+def download(configFile, timestamp, overwrite):
     print 'Initialisiere Logik zum Herunterladen der Gesamtausgabe für ' + timestamp + '...'
 
     # Konfiguration laden
@@ -99,13 +99,13 @@ def download(configFile, timestamp):
 
     # Prüfen, ob PDF schon vorhanden ist
     pdfFile = config['pdf_base'] + timestamp + '.pdf'
-    if os.path.isfile(pdfFile):
+    if not overwrite and os.path.isfile(pdfFile):
         print 'E-Paper für ' + timestamp + ' wurde bereits heruntergeladen -> Abbruch'
         return
 
     # Bei ONetz anmelden
     s = requests.Session()
-    r = s.post(LOGIN_URL, data={'lg': config['username'], 'pw': config['password']}, timeout=config['http_timeout'], headers=headers)
+    r = s.post(LOGIN_URL, data={'lg': config['username'], 'pw': config['password']}, timeout=config['http_timeout'], headers=headers, allow_redirects=True)
     if not r.ok:
         print 'Anmeldung fehlgeschlagen! -> Abbruch'
         return
@@ -119,7 +119,10 @@ def download(configFile, timestamp):
             newspaperLink = href
             break
     if not newspaperLink:
-        print 'Link zum E-Paper nicht gefunden! -> Abbruch'
+        if soup.findAll('div', { 'class' : 'warn' }):
+            print 'Anmeldung fehlgeschlagen! -> Abbruch'
+        else:
+            print 'Link zum E-Paper nicht gefunden! -> Abbruch'
         return
 
     # Warten (Echten Benutzer vorgaukeln; nicht notwendig, aber sieht für den Server "besser" aus)
@@ -127,7 +130,7 @@ def download(configFile, timestamp):
     time.sleep(random.uniform(config['min_sleep'], config['max_sleep']))
 
     # Link zum E-Paper aufrufen
-    r = s.get(EPAPER_DOMAIN + newspaperLink, timeout=config['http_timeout'], headers=headers)
+    r = s.get(EPAPER_DOMAIN + newspaperLink, timeout=config['http_timeout'], headers=headers, allow_redirects=True)
     if not r.ok:
         print 'Aufruf der E-Paper-Seite fehlgeschlagen! -> Abbruch'
         return
@@ -138,29 +141,28 @@ def download(configFile, timestamp):
 
     # Zeitung downloaden
     deletePdf = True
-    try:
-        with open(pdfFile, 'wb') as handle:
-            r = s.get(EPAPER_PDF_LINK_START % (config['epaper_edition'], timestamp), stream=True, timeout=config['http_timeout'], headers=headers)
-            if not r.ok:
-                # TODO: 404-Check?
-                print 'Kann E-Paper PDF nicht heruntenladen! -> Abbruch'
-                deletePdf = True
-            else:
-                contentLength = int(r.headers['content-length'])
-                printProgress(0, contentLength)
-                print 'Lade Tagesausgabe herunter...'
-                written = 0
-                for block in r.iter_content(1024):
-                    written += len(block)
-                    handle.write(block)
-                    printProgress(written, contentLength)
-                printProgress(contentLength, contentLength)
-                deletePdf = False
-    except:
-        deletePdf = True
+    #try:
+    with open(pdfFile, 'wb') as handle:
+        r = s.get(EPAPER_PDF_LINK_START % (config['epaper_edition'], timestamp), stream=True, timeout=config['http_timeout'], headers=headers)
+        if not r.ok:
+            # TODO: 404-Check?
+            print 'Kann E-Paper PDF nicht heruntenladen! -> Abbruch'
+            deletePdf = True
+        else:
+            contentLength = int(r.headers['content-length'])
+            print 'Lade Tagesausgabe herunter...'
+            written = 0
+            for block in r.iter_content(1024):
+                written += len(block)
+                handle.write(block)
+                printProgress(written, contentLength)
+            deletePdf = False
+    #except:
+    #    deletePdf = True
 
     if deletePdf:
-        os.remove(pdfFile)
+        if os.path.isfile(pdfFile):
+            os.remove(pdfFile)
     elif config['current_epaper_filename'] and timestamp == time.strftime('%Y%m%d'):
         symLink = False
         if config['current_epaper_symlink']:
@@ -169,7 +171,8 @@ def download(configFile, timestamp):
             else:
                 print 'Warnung: Konfigurationsvariable "current_epaper_symlink" kann auf Windows-Systemen nicht angewandt werden -> Normale Kopie wird erstellt!'
         if symLink:
-            os.remove(config['pdf_base'] + config['current_epaper_filename'])
+            if os.path.isfile(config['pdf_base'] + config['current_epaper_filename']):
+                os.remove(config['pdf_base'] + config['current_epaper_filename'])
             os.symlink(pdfFile, config['pdf_base'] + config['current_epaper_filename'])
         else:
             shutil.copy2(pdfFile, config['pdf_base'] + config['current_epaper_filename'])
@@ -182,11 +185,11 @@ def download(configFile, timestamp):
 
 # Helper zum Anzeigen des Download-Fortschritts
 def printProgress(progress, total):
-    filledLength = int(round(100 * progress / float(total)))
+    filledLength = int(round(30 * progress / float(total)))
     percents = round(100.0 * (progress / float(total)), 2)
-    bar = '#' * filledLength + '-' * (100 - filledLength)
-    Sys.stdout.write('PDF-Download: [%s] %s%s abgeschlossen\r' % (bar, percents, '%')),
-    Sys.stdout.flush()
+    bar = '#' * filledLength + '-' * (30 - filledLength)
+    sys.stdout.write('Status [%s] %s%s abgeschlossen\r' % (bar, percents, '%')),
+    sys.stdout.flush()
     if progress >= total:
         print('\n')
 
@@ -227,6 +230,7 @@ if __name__ == '__main__':
     parser = MyParser(description=argDesc(), formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-c', '--config', help='Pfad zur Config-Datei (z.B. newspaper.json)', nargs='?', default='newspaper.json', required=True)
     parser.add_argument('-d', '--date', help='Datum der zu ladenden Zeitung (nicht gesetzt = heute)', nargs='?', required=False)
+    parser.add_argument('-o', '--overwrite', help='Falls notwendig, bestehendes PDF überschreiben', action='store_true', required=False)
     args = vars(parser.parse_args())
 
     timestamp = time.strftime('%Y%m%d')
@@ -237,4 +241,4 @@ if __name__ == '__main__':
             print 'Achtung: Übergebener Datumsparameter ist ungültig! Bitte Format YYYYMMDD verwenden!'
             sys.exit(2)
 
-    download(args['config'], timestamp)
+    download(args['config'], timestamp, args['overwrite'])
