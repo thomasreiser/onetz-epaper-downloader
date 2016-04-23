@@ -1,0 +1,11 @@
+{
+  "username": "my@email.com",
+  "password": "geheim",
+  "epaper_edition": "WN",
+  "pdf_base": "/home/thomas/newspaper/",
+  "http_timeout": 360,
+  "min_sleep": 1,
+  "max_sleep": 5,
+  "current_epaper_filename": "current.pdf",
+  "current_epaper_symlink": true
+}
