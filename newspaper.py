@@ -81,10 +81,10 @@ def download(configFile, timestamp):
     if not config['http_timeout']:
         config['http_timeout'] = DEFAULT_HTTP_TIMEOUT
 
-    if not config['min_sleep']:
+    if not config['min_sleep'] or config['min_sleep'] < 0:
         config['min_sleep'] = DEFAULT_MIN_SLEEP
 
-    if not config['max_sleep']:
+    if not config['max_sleep'] or config['max_sleep'] < 0:
         config['max_sleep'] = DEFAULT_MAX_SLEEP
 
     # Aktuelle, reale User-Agents von useragentstring.com laden und zufälligen UA setzen
