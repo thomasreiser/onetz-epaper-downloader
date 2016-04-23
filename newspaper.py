@@ -5,6 +5,8 @@
     Onetz E-Paper Downloader
     Copyright (C) 2016 Thomas Reiser
 
+    https://github.com/thomasreiser/onetz-epaper-downloader
+
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -34,6 +36,7 @@ import shutil
 import json
 import argparse
 import sys
+import platform
 
 
 
@@ -52,19 +55,27 @@ DEFAULT_MAX_SLEEP = 5 # Maximale Wartezeit/Sleep zwischen den Requests in Sekund
 
 
 # Programmlogik
-def download(timestamp):
+def download(configFile, timestamp):
     print 'Initialisiere Logik zum Herunterladen der Gesamtausgabe für ' + timestamp + '...'
 
     # Konfiguration laden
-    with open('newspaper.json', 'r') as f:
-        config = json.load(f)
+    if not os.path.isfile(configFile):
+        print 'Achtung: Übergebene Config-Datei existiert nicht! -> Abbruch'
+        return
+
+    try:
+        with open(configFile, 'r') as f:
+            config = json.load(f)
+    except:
+        print 'Achtung: Übergebene Config-Datei kann nicht gelesen werden! -> Abbruch'
+        return
 
     if not config or not config['username'] or not config['password']:
         print 'Es wurden keine Zugangsdaten angegeben. Bitte newpaper.json korrekt befüllen -> Abbruch'
         return
 
     if not config['epaper_edition']:
-        print 'Es wurden keine Zeitungsedition (z.B. "WN") angegeben. Bitte newpaper.json korrekt befüllen -> Abbruch'
+        print 'Es wurden keine Zeitungsedition (z.B. "WN" für Weiden) angegeben. Bitte newpaper.json korrekt befüllen -> Abbruch'
         return
 
     if not config['http_timeout']:
@@ -111,8 +122,6 @@ def download(timestamp):
         print 'Link zum E-Paper nicht gefunden! -> Abbruch'
         return
 
-    print newspaperLink
-
     # Warten (Echten Benutzer vorgaukeln; nicht notwendig, aber sieht für den Server "besser" aus)
     print 'Anmeldung erfolgreich. Warte...'
     time.sleep(random.uniform(config['min_sleep'], config['max_sleep']))
@@ -133,12 +142,13 @@ def download(timestamp):
         with open(pdfFile, 'wb') as handle:
             r = s.get(EPAPER_PDF_LINK_START % (config['epaper_edition'], timestamp), stream=True, timeout=config['http_timeout'], headers=headers)
             if not r.ok:
+                # TODO: 404-Check?
                 print 'Kann E-Paper PDF nicht heruntenladen! -> Abbruch'
                 deletePdf = True
             else:
                 contentLength = int(r.headers['content-length'])
                 printProgress(0, contentLength)
-                print 'Lade aktuelle Tagesausgabe herunter...'
+                print 'Lade Tagesausgabe herunter...'
                 written = 0
                 for block in r.iter_content(1024):
                     written += len(block)
@@ -152,7 +162,17 @@ def download(timestamp):
     if deletePdf:
         os.remove(pdfFile)
     elif config['current_epaper_filename'] and timestamp == time.strftime('%Y%m%d'):
-        shutil.copy2(pdfFile, config['pdf_base'] + config['current_epaper_filename'])
+        symLink = False
+        if config['current_epaper_symlink']:
+            if platform.system().lower() != 'windows':
+                symLink = True
+            else:
+                print 'Warnung: Konfigurationsvariable "current_epaper_symlink" kann auf Windows-Systemen nicht angewandt werden -> Normale Kopie wird erstellt!'
+        if symLink:
+            os.remove(config['pdf_base'] + config['current_epaper_filename'])
+            os.symlink(pdfFile, config['pdf_base'] + config['current_epaper_filename'])
+        else:
+            shutil.copy2(pdfFile, config['pdf_base'] + config['current_epaper_filename'])
 
     if not deletePdf:
         print 'Zeitung erfolgreich heruntergeladen!'
@@ -161,19 +181,19 @@ def download(timestamp):
 
 
 # Helper zum Anzeigen des Download-Fortschritts
-def printProgress(iteration, total):
-    filledLength = int(round(60 * iteration / float(total)))
-    percents = round(100.00 * (iteration / float(total)), 2)
-    bar = '#' * filledLength + '-' * (60 - filledLength)
-    Sys.stdout.write('Download: [%s] %s%s abgeschlossen\r' % (bar, percents, '%')),
+def printProgress(progress, total):
+    filledLength = int(round(100 * progress / float(total)))
+    percents = round(100.0 * (progress / float(total)), 2)
+    bar = '#' * filledLength + '-' * (100 - filledLength)
+    Sys.stdout.write('PDF-Download: [%s] %s%s abgeschlossen\r' % (bar, percents, '%')),
     Sys.stdout.flush()
-    if iteration == total:
+    if progress >= total:
         print('\n')
 
 
 
 
-# Eigener ArgParser
+# Eigener ArgParser zum Anzeigen der Hilfe-Nachricht beim Aufruf des Scripts ohne Argumente
 class MyParser(argparse.ArgumentParser):
     def error(self, message):
         sys.stderr.write('error: %s\n' % message)
@@ -187,6 +207,8 @@ def argDesc():
     d = []
     d.append('#####################################################################')
     d.append('## ONETZ EPAPER DOWNLOADER V1.0                                    ##')
+    d.append('##                                                                 ##')
+    d.append('##     https://github.com/thomasreiser/onetz-epaper-downloader     ##')
     d.append('##                                                                 ##')
     d.append('## Benutzung auf eigenes Risiko und nur für den privaten Gebrauch! ##')
     d.append('## Der Autor steht in keiner Beziehung mit Onetz bzw. dem Medien-  ##')
@@ -207,10 +229,6 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--date', help='Datum der zu ladenden Zeitung (nicht gesetzt = heute)', nargs='?', required=False)
     args = vars(parser.parse_args())
 
-    if not os.path.isfile(args['config']):
-        print 'Achtung: Übergebene Config-Datei existiert nicht! -> Abbruch'
-        sys.exit(2)
-
     timestamp = time.strftime('%Y%m%d')
     if args['date']:
         if len(args['date']) == 8 and args['date'].isdigit():
@@ -219,4 +237,4 @@ if __name__ == '__main__':
             print 'Achtung: Übergebener Datumsparameter ist ungültig! Bitte Format YYYYMMDD verwenden!'
             sys.exit(2)
 
-    download(timestamp)
+    download(args['config'], timestamp)
