@@ -30,7 +30,7 @@ Setzen des Erscheinungsdatums der zu ladenen Zeitung (Format: YYYMMDD, nicht ges
 
 **Beispielaufruf des Scripts**
 ```
-./newspaper.py -c /home/thomas/newspaper.json -d 20160903 -o
+./newspaper.py -c /home/thomas/newspaper.json -d 20160309 -o
 ```
 Erklärung:
 In diesem Fall lädt das Script die Gesamtausgabe vom 09.03.2016 herunter und überschreibt die bestehende PDF, falls diese schon existiert. Es wird die Konfiguration /home/thomas/newspaper.json gelesen.
