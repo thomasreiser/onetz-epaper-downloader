@@ -29,6 +29,7 @@ import requests # pip install requests
 from bs4 import BeautifulSoup # pip install beautifulsoup4
 from fake_useragent import UserAgent # pip install fake-useragent
 import time
+import datetime
 import random
 import os
 import os.path
@@ -56,7 +57,18 @@ DEFAULT_MAX_SLEEP = 5 # Maximale Wartezeit/Sleep zwischen den Requests in Sekund
 
 # Programmlogik
 def download(configFile, timestamp, overwrite):
-    print 'Initialisiere Logik zum Herunterladen der Gesamtausgabe für ' + timestamp + '...'
+    print 'Initialisiere Logik zum Herunterladen der Gesamtausgabe...'
+
+    # Timestamp prüfen
+    if not timestamp or len(timestamp) != 8 or not timestamp.isdigit():
+        print 'Achtung: Übergebener Datumsparameter ist ungültig! Bitte Format YYYYMMDD verwenden!'
+        return
+
+    # Wenn der übergebene Timestamp ein Sonntag ist, dann den Benutzer warnen und automatisch auf den Samstag springen
+    timestamp = fixDate(timestamp, True)
+    today = fixDate(time.strftime('%Y%m%d'), False)
+
+    print 'Zu herunterladende Gesamtausgabe: ' + timestamp
 
     # Konfiguration laden
     if not os.path.isfile(configFile):
@@ -103,7 +115,7 @@ def download(configFile, timestamp, overwrite):
         print 'E-Paper für ' + timestamp + ' wurde bereits heruntergeladen -> Abbruch'
         return
 
-    # Bei ONetz anmelden
+    # Bei Onetz anmelden
     s = requests.Session()
     r = s.post(LOGIN_URL, data={'lg': config['username'], 'pw': config['password']}, timeout=config['http_timeout'], headers=headers, allow_redirects=True)
     if not r.ok:
@@ -141,29 +153,29 @@ def download(configFile, timestamp, overwrite):
 
     # Zeitung downloaden
     deletePdf = True
-    #try:
-    with open(pdfFile, 'wb') as handle:
-        r = s.get(EPAPER_PDF_LINK_START % (config['epaper_edition'], timestamp), stream=True, timeout=config['http_timeout'], headers=headers)
-        if not r.ok:
-            # TODO: 404-Check?
-            print 'Kann E-Paper PDF nicht heruntenladen! -> Abbruch'
-            deletePdf = True
-        else:
-            contentLength = int(r.headers['content-length'])
-            print 'Lade Tagesausgabe herunter...'
-            written = 0
-            for block in r.iter_content(1024):
-                written += len(block)
-                handle.write(block)
-                printProgress(written, contentLength)
-            deletePdf = False
-    #except:
-    #    deletePdf = True
+    try:
+        with open(pdfFile, 'wb') as handle:
+            r = s.get(EPAPER_PDF_LINK_START % (config['epaper_edition'], timestamp), stream=True, timeout=config['http_timeout'], headers=headers)
+            if not r.ok:
+                # TODO: 404-Check?
+                print 'Kann E-Paper PDF nicht heruntenladen! -> Abbruch'
+                deletePdf = True
+            else:
+                contentLength = int(r.headers['content-length'])
+                print 'Lade Tagesausgabe herunter...'
+                written = 0
+                for block in r.iter_content(1024):
+                    written += len(block)
+                    handle.write(block)
+                    printProgress(written, contentLength)
+                deletePdf = False
+    except:
+        deletePdf = True
 
     if deletePdf:
         if os.path.isfile(pdfFile):
             os.remove(pdfFile)
-    elif config['current_epaper_filename'] and timestamp == time.strftime('%Y%m%d'):
+    elif config['current_epaper_filename'] and timestamp == today:
         symLink = False
         if config['current_epaper_symlink']:
             if platform.system().lower() != 'windows':
@@ -179,6 +191,19 @@ def download(configFile, timestamp, overwrite):
 
     if not deletePdf:
         print 'Zeitung erfolgreich heruntergeladen!'
+
+
+
+
+# Methode zum Korrigieren eines Datums (Sonntag -> Samstag)
+def fixDate(timestamp, printWarning):
+     t = datetime.datetime.strptime(timestamp, '%Y%m%d')
+     if t.isoweekday() == 7:
+         # TODO: Feiertag
+         if printWarning:
+             print "Achtung: Der übergebene Tag ist ein Sonntag! -> Lade die Zeitung für Samstag herunter"
+         t = t - datetime.timedelta(days=1)
+     return t.strftime('%Y%m%d')
 
 
 
@@ -206,6 +231,7 @@ class MyParser(argparse.ArgumentParser):
 
 
 
+# Konsolen Text der in der Help-Message angezeigt wird
 def argDesc():
     d = []
     d.append('#####################################################################')
@@ -233,12 +259,4 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--overwrite', help='Falls notwendig, bestehendes PDF überschreiben', action='store_true', required=False)
     args = vars(parser.parse_args())
 
-    timestamp = time.strftime('%Y%m%d')
-    if args['date']:
-        if len(args['date']) == 8 and args['date'].isdigit():
-            timestamp = args['date']
-        else:
-            print 'Achtung: Übergebener Datumsparameter ist ungültig! Bitte Format YYYYMMDD verwenden!'
-            sys.exit(2)
-
-    download(args['config'], timestamp, args['overwrite'])
+    download(args['config'], args['date'] or time.strftime('%Y%m%d'), args['overwrite'])
