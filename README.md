@@ -1,6 +1,12 @@
 # onetz-epaper-downloader
 Ein einfaches Python-Script zum Heruntenladen der aktuellen Tagesausgabe des Medienhauses "Der Neue Tag".
 
+###### Installation
+**Installation notwendiger 3rd-Party Libraries**
+```
+sudo pip install requests beautifulsoup4 fake-useragent
+```
+
 ###### Aufruf des Scripts
 **Notwendige Parameter**
 Setzen der JSON-Konfigurationsdatei:
@@ -69,3 +75,7 @@ Dateiname für die aktuelle Tagesausgabe. Ist z.B. "current.pdf" hinterlegt, so 
 current_epaper_symlink
 ```
 Ist ein Wert bei *current_epaper_filename* hinterlegt und *current_epaper_symlink* auf **true**, so wird ein Symlink anstatt einer echten Kopie der aktuellen Ausgabe angelegt. Achtung: Funktioniert nicht bei Windows-Systemen!
+
+###### Offene Punkte / TODO's
+- Unterstüzung für HTTP/SOCKS-Proxies
+- Implementierung einer Logik zur automatisierten Generierung der JSON-Config
