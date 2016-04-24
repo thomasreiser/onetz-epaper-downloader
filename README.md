@@ -77,5 +77,5 @@ current_epaper_symlink
 Ist ein Wert bei *current_epaper_filename* hinterlegt und *current_epaper_symlink* auf **true**, so wird ein Symlink anstatt einer echten Kopie der aktuellen Ausgabe angelegt. Achtung: Funktioniert nicht bei Windows-Systemen!
 
 ###### Offene Punkte / TODO's
-- Unterstüzung für HTTP/SOCKS-Proxies
+- Unterstützung für HTTP/SOCKS-Proxies
 - Implementierung einer Logik zur automatisierten Generierung der JSON-Config
