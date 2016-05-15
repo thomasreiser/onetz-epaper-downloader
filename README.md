@@ -4,7 +4,7 @@ Ein einfaches Python-Script zum Heruntenladen der aktuellen Tagesausgabe des Med
 ###### Installation
 **Installation notwendiger 3rd-Party Libraries**
 ```
-sudo pip install requests beautifulsoup4 fake-useragent
+sudo pip install requests beautifulsoup4 fake-useragent workalendar
 ```
 
 ###### Aufruf des Scripts

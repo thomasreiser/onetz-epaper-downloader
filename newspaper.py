@@ -28,6 +28,7 @@
 import requests # pip install requests
 from bs4 import BeautifulSoup # pip install beautifulsoup4
 from fake_useragent import UserAgent # pip install fake-useragent
+from workalendar.europe import Bavaria # pip install workalender
 import time
 import datetime
 import random
@@ -43,6 +44,7 @@ import platform
 
 
 # Interne Konstanten
+VERSION = '1.1'
 LOGIN_URL = 'https://service.onetz.de/register/login/' # Onetz Login-URL
 EPAPER_DOMAIN = 'http://service.onetz.de' # Domain des E-Paper-Dienstes
 EPAPER_LINK_START = '/epaper/validation/index.adp?tmp=' # Start des Links zum E-Paper ("Ihr E-Paper")
@@ -64,7 +66,7 @@ def download(configFile, timestamp, overwrite):
         print 'Achtung: Übergebener Datumsparameter ist ungültig! Bitte Format YYYYMMDD verwenden!'
         return
 
-    # Wenn der übergebene Timestamp ein Sonntag ist, dann den Benutzer warnen und automatisch auf den Samstag springen
+    # Wenn der übergebene Timestamp ein Sonntag/Feiertag ist, dann den Benutzer warnen und automatisch auf den Samstag springen
     timestamp = fixDate(timestamp, True)
     today = fixDate(time.strftime('%Y%m%d'), False)
 
@@ -108,6 +110,14 @@ def download(configFile, timestamp, overwrite):
 
     # Eigene, angepasste HTTP-Header
     headers = {'User-Agent': userAgent, 'DNT': '1'}
+
+    # Prüfen, ob PDF-Zielverzeichnis existiert, wenn nicht versuche, es zu erstellen
+    try:
+        os.makedirs(config['pdf_base'])
+    except OSError:
+        if not os.path.isdir(config['pdf_base']):
+            print 'Zielverzeichnis "' + config['pdf_base'] + '" existiert nicht und kann nicht angelegt werden -> Abbruch'
+            return
 
     # Prüfen, ob PDF schon vorhanden ist
     pdfFile = config['pdf_base'] + timestamp + '.pdf'
@@ -158,7 +168,7 @@ def download(configFile, timestamp, overwrite):
             r = s.get(EPAPER_PDF_LINK_START % (config['epaper_edition'], timestamp), stream=True, timeout=config['http_timeout'], headers=headers)
             if not r.ok:
                 # TODO: 404-Check?
-                print 'Kann E-Paper PDF nicht heruntenladen! -> Abbruch'
+                print 'Kann E-Paper PDF nicht herunterladen! -> Abbruch'
                 deletePdf = True
             else:
                 contentLength = int(r.headers['content-length'])
@@ -169,7 +179,11 @@ def download(configFile, timestamp, overwrite):
                     handle.write(block)
                     printProgress(written, contentLength)
                 deletePdf = False
+    except IOError:
+        print 'Fehler beim Schreiben der PDF-Datei -> Abbruch'
+        deletePdf = True
     except:
+        print 'Fehler beim Herunterladen der PDF-Datei -> Abbruch'
         deletePdf = True
 
     if deletePdf:
@@ -195,14 +209,15 @@ def download(configFile, timestamp, overwrite):
 
 
 
-# Methode zum Korrigieren eines Datums (Sonntag -> Samstag)
+# Methode zum Korrigieren eines Datums (Sonntag -> Samstag + Korrektur bei Feiertagen)
 def fixDate(timestamp, printWarning):
      t = datetime.datetime.strptime(timestamp, '%Y%m%d')
-     if t.isoweekday() == 7:
-         # TODO: Feiertag
+     holidayCalendar = Bavaria()
+     if t.isoweekday() == 7 or holidayCalendar.is_holiday(t):
          if printWarning:
-             print "Achtung: Der übergebene Tag ist ein Sonntag! -> Lade die Zeitung für Samstag herunter"
-         t = t - datetime.timedelta(days=1)
+             print "Achtung: Der übergebene Tag ist ein Sonn- oder Feiertag! -> Lade die Zeitung für den letzen Werktag vor diesem Datum herunter"
+         while t.isoweekday() == 7 or holidayCalendar.is_holiday(t):
+             t = t - datetime.timedelta(days=1)
      return t.strftime('%Y%m%d')
 
 
@@ -235,7 +250,7 @@ class MyParser(argparse.ArgumentParser):
 def argDesc():
     d = []
     d.append('#####################################################################')
-    d.append('## ONETZ EPAPER DOWNLOADER V1.0                                    ##')
+    d.append('## ONETZ EPAPER DOWNLOADER V' + VERSION.ljust(39, ' ') + '##')
     d.append('##                                                                 ##')
     d.append('##     https://github.com/thomasreiser/onetz-epaper-downloader     ##')
     d.append('##                                                                 ##')
