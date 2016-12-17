@@ -39,6 +39,7 @@ import json
 import argparse
 import sys
 import platform
+import logging
 
 
 
@@ -48,7 +49,7 @@ VERSION = '1.1'
 LOGIN_URL = 'https://service.onetz.de/register/login/' # Onetz Login-URL
 EPAPER_DOMAIN = 'http://service.onetz.de' # Domain des E-Paper-Dienstes
 EPAPER_LINK_START = '/epaper/validation/index.adp?tmp=' # Start des Links zum E-Paper ("Ihr E-Paper")
-EPAPER_PDF_LINK_START = 'http://epaper.oberpfalznetz.de/download/?edition=%s&date=%s' # Links zum E-Paper Download der Gesamtausgabe
+EPAPER_PDF_LINK_START = 'http://epaper.onetz.de/download/?edition=%s&date=%s' # Links zum E-Paper Download der Gesamtausgabe
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36" # User Agent (Default-Wert)
 DEFAULT_HTTP_TIMEOUT = 360 # HTTP Timeout in Sekunden (Default-Wert)
 DEFAULT_MIN_SLEEP = 1 # Minimale Wartezeit/Sleep zwischen den Requests in Sekunden (Default-Wert)
@@ -56,40 +57,46 @@ DEFAULT_MAX_SLEEP = 5 # Maximale Wartezeit/Sleep zwischen den Requests in Sekund
 
 
 
+# Logger
+logging.getLogger('fake_useragent').addHandler(logging.NullHandler())
+
+
+
 
 # Programmlogik
 def download(configFile, timestamp, overwrite):
-    print 'Initialisiere Logik zum Herunterladen der Gesamtausgabe...'
+    print('Initialisiere Logik zum Herunterladen der Gesamtausgabe...')
 
     # Timestamp prüfen
     if not timestamp or len(timestamp) != 8 or not timestamp.isdigit():
-        print 'Achtung: Übergebener Datumsparameter ist ungültig! Bitte Format YYYYMMDD verwenden!'
+        print('Achtung: Übergebener Datumsparameter ist ungültig! Bitte Format YYYYMMDD verwenden!')
         return
 
     # Wenn der übergebene Timestamp ein Sonntag/Feiertag ist, dann den Benutzer warnen und automatisch auf den Samstag springen
     timestamp = fixDate(timestamp, True)
     today = fixDate(time.strftime('%Y%m%d'), False)
 
-    print 'Zu herunterladende Gesamtausgabe: ' + timestamp
+    print('Zu herunterladende Gesamtausgabe: ' + timestamp)
 
     # Konfiguration laden
     if not os.path.isfile(configFile):
-        print 'Achtung: Übergebene Config-Datei existiert nicht! -> Abbruch'
+        print('Achtung: Übergebene Config-Datei existiert nicht! -> Abbruch')
         return
 
+    config = None
     try:
         with open(configFile, 'r') as f:
             config = json.load(f)
     except:
-        print 'Achtung: Übergebene Config-Datei kann nicht gelesen werden! -> Abbruch'
+        print('Achtung: Übergebene Config-Datei kann nicht gelesen werden! -> Abbruch')
         return
 
     if not config or not config['username'] or not config['password']:
-        print 'Es wurden keine Zugangsdaten angegeben. Bitte newpaper.json korrekt befüllen -> Abbruch'
+        print('Es wurden keine Zugangsdaten angegeben. Bitte newpaper.json korrekt befüllen -> Abbruch')
         return
 
     if not config['epaper_edition']:
-        print 'Es wurden keine Zeitungsedition (z.B. "WN" für Weiden) angegeben. Bitte newpaper.json korrekt befüllen -> Abbruch'
+        print('Es wurden keine Zeitungsedition (z.B. "WN" für Weiden) angegeben. Bitte JSON Config korrekt befüllen -> Abbruch')
         return
 
     if not config['http_timeout']:
@@ -116,20 +123,20 @@ def download(configFile, timestamp, overwrite):
         os.makedirs(config['pdf_base'])
     except OSError:
         if not os.path.isdir(config['pdf_base']):
-            print 'Zielverzeichnis "' + config['pdf_base'] + '" existiert nicht und kann nicht angelegt werden -> Abbruch'
+            print('Zielverzeichnis "' + config['pdf_base'] + '" existiert nicht und kann nicht angelegt werden -> Abbruch')
             return
 
     # Prüfen, ob PDF schon vorhanden ist
     pdfFile = config['pdf_base'] + timestamp + '.pdf'
     if not overwrite and os.path.isfile(pdfFile):
-        print 'E-Paper für ' + timestamp + ' wurde bereits heruntergeladen -> Abbruch'
+        print('E-Paper für ' + timestamp + ' wurde bereits heruntergeladen -> Abbruch')
         return
 
     # Bei Onetz anmelden
     s = requests.Session()
     r = s.post(LOGIN_URL, data={'lg': config['username'], 'pw': config['password']}, timeout=config['http_timeout'], headers=headers, allow_redirects=True)
     if not r.ok:
-        print 'Anmeldung fehlgeschlagen! -> Abbruch'
+        print('Anmeldung fehlgeschlagen! -> Abbruch')
         return
 
     # Jetzt muss die Rückgabe geparsed werden, da dort ein spezieller Link zum E-Paper gezogen werden muss
@@ -142,23 +149,23 @@ def download(configFile, timestamp, overwrite):
             break
     if not newspaperLink:
         if soup.findAll('div', { 'class' : 'warn' }):
-            print 'Anmeldung fehlgeschlagen! -> Abbruch'
+            print('Anmeldung fehlgeschlagen! -> Abbruch')
         else:
-            print 'Link zum E-Paper nicht gefunden! -> Abbruch'
+            print('Link zum E-Paper nicht gefunden! -> Abbruch')
         return
 
     # Warten (Echten Benutzer vorgaukeln; nicht notwendig, aber sieht für den Server "besser" aus)
-    print 'Anmeldung erfolgreich. Warte...'
+    print('Anmeldung erfolgreich. Warte...')
     time.sleep(random.uniform(config['min_sleep'], config['max_sleep']))
 
     # Link zum E-Paper aufrufen
     r = s.get(EPAPER_DOMAIN + newspaperLink, timeout=config['http_timeout'], headers=headers, allow_redirects=True)
     if not r.ok:
-        print 'Aufruf der E-Paper-Seite fehlgeschlagen! -> Abbruch'
+        print('Aufruf der E-Paper-Seite fehlgeschlagen! -> Abbruch')
         return
 
     # Warten (Echten Benutzer vorgaukeln; nicht notwendig, aber sieht für den Server "besser" aus)
-    print 'E-Paper Portal aufgerufen. Warte...'
+    print('E-Paper Portal aufgerufen. Warte...')
     time.sleep(random.uniform(config['min_sleep'], config['max_sleep']))
 
     # Zeitung downloaden
@@ -168,11 +175,11 @@ def download(configFile, timestamp, overwrite):
             r = s.get(EPAPER_PDF_LINK_START % (config['epaper_edition'], timestamp), stream=True, timeout=config['http_timeout'], headers=headers)
             if not r.ok:
                 # TODO: 404-Check?
-                print 'Kann E-Paper PDF nicht herunterladen! -> Abbruch'
+                print('Kann E-Paper PDF nicht herunterladen! -> Abbruch')
                 deletePdf = True
             else:
                 contentLength = int(r.headers['content-length'])
-                print 'Lade Tagesausgabe herunter...'
+                print('Lade Tagesausgabe herunter...')
                 written = 0
                 for block in r.iter_content(1024):
                     written += len(block)
@@ -180,10 +187,10 @@ def download(configFile, timestamp, overwrite):
                     printProgress(written, contentLength)
                 deletePdf = False
     except IOError:
-        print 'Fehler beim Schreiben der PDF-Datei -> Abbruch'
+        print('Fehler beim Lesen/Schreiben der PDF-Datei -> Abbruch')
         deletePdf = True
     except:
-        print 'Fehler beim Herunterladen der PDF-Datei -> Abbruch'
+        print('Fehler beim Herunterladen der PDF-Datei -> Abbruch')
         deletePdf = True
 
     if deletePdf:
@@ -195,7 +202,7 @@ def download(configFile, timestamp, overwrite):
             if platform.system().lower() != 'windows':
                 symLink = True
             else:
-                print 'Warnung: Konfigurationsvariable "current_epaper_symlink" kann auf Windows-Systemen nicht angewandt werden -> Normale Kopie wird erstellt!'
+                print('Warnung: Konfigurationsvariable "current_epaper_symlink" kann auf Windows-Systemen nicht angewandt werden -> Normale Kopie wird erstellt!')
         if symLink:
             if os.path.isfile(config['pdf_base'] + config['current_epaper_filename']):
                 os.remove(config['pdf_base'] + config['current_epaper_filename'])
@@ -204,7 +211,7 @@ def download(configFile, timestamp, overwrite):
             shutil.copy2(pdfFile, config['pdf_base'] + config['current_epaper_filename'])
 
     if not deletePdf:
-        print 'Zeitung erfolgreich heruntergeladen!'
+        print('Zeitung erfolgreich heruntergeladen!')
 
 
 
@@ -215,7 +222,7 @@ def fixDate(timestamp, printWarning):
      holidayCalendar = Bavaria()
      if t.isoweekday() == 7 or holidayCalendar.is_holiday(t):
          if printWarning:
-             print "Achtung: Der übergebene Tag ist ein Sonn- oder Feiertag! -> Lade die Zeitung für den letzen Werktag vor diesem Datum herunter"
+             print('Achtung: Der übergebene Tag ist ein Sonn- oder Feiertag! -> Lade die Zeitung für den letzen Werktag vor diesem Datum herunter')
          while t.isoweekday() == 7 or holidayCalendar.is_holiday(t):
              t = t - datetime.timedelta(days=1)
      return t.strftime('%Y%m%d')
