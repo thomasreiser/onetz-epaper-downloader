@@ -1,20 +1,20 @@
 # onetz-epaper-downloader
 Ein einfaches Python-Script zum Herunterladen der aktuellen Tagesausgabe des Medienhauses "Der Neue Tag".
 
-###### Installation
-**Installation notwendiger 3rd-Party Libraries**
+## Installation
+#### Installation notwendiger 3rd-Party Libraries
 ```
 sudo pip install requests beautifulsoup4 fake-useragent workalendar
 ```
 
-###### Aufruf des Scripts
-**Notwendige Parameter**
+## Aufruf des Scripts
+#### Notwendige Parameter
 Setzen der JSON-Konfigurationsdatei:
 ```
 -c [Pfad zur JSON-Config], --config [Pfad zur JSON-Config]
 ```
 
-**Optionale Parameter**
+#### Optionale Parameter
 Anzeigen der Hilfe:
 ```
 -h, --help
@@ -28,15 +28,15 @@ Setzen des Erscheinungsdatums der zu ladenen Zeitung (Format: YYYMMDD, nicht ges
 -o, --overwrite
 ```
 
-**Beispielaufruf des Scripts**
+#### Beispielaufruf des Scripts
 ```
 ./newspaper.py -c /home/thomas/newspaper.json -d 20160309 -o
 ```
 Erklärung:
 In diesem Fall lädt das Script die Gesamtausgabe vom 09.03.2016 herunter und überschreibt die bestehende PDF, falls diese schon existiert. Es wird die Konfiguration /home/thomas/newspaper.json gelesen.
 
-###### JSON Konfigurationsdatei
-**Notwendige Einstellungen**
+## JSON Konfigurationsdatei
+#### Notwendige Einstellungen
 ```
 username
 ```
@@ -63,7 +63,7 @@ pdf_base
 ```
 Verzeichnis, in das die E-Paper PDF-Dateien geschrieben werden sollen
 
-**Optionale Einstellungen**
+#### Optionale Einstellungen
 ```
 http_timeout
 ```
@@ -85,6 +85,21 @@ current_epaper_symlink
 ```
 Ist ein Wert bei *current_epaper_filename* hinterlegt und *current_epaper_symlink* auf **true**, so wird ein Symlink anstatt einer echten Kopie der aktuellen Ausgabe angelegt. Achtung: Funktioniert nicht bei Windows-Systemen!
 
-###### Offene Punkte / TODO's
+## Offene Punkte / TODO's
 - Unterstützung für HTTP/SOCKS-Proxies
 - Implementierung einer Logik zur automatisierten Generierung der JSON-Config
+
+## Changelog
+#### 19.09.2019
+- Unterstützung für neues Server-Backend (SSO etc.) von Onetz
+- Aktualisierung aller möglichen Codes für Zeitungseditionen
+
+#### 17.02.2016
+- Anpassung der Onetz Server-URLs
+- Unterstützung von Python 3
+
+#### 15.05.2016
+- Automatische Erkennung von Feiertagen
+
+#### 24.04.2016
+- Initiale Version
