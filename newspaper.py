@@ -148,7 +148,7 @@ def download(configFile, timestamp, overwrite):
     # Bei Onetz anmelden
     print('Melde mich an mit Benutzer ' + config['username'] + '...')
     s = requests.Session()
-    r = s.post(LOGIN_URL, data={'lg': config['username'], 'pw': config['password']}, timeout=config['http_timeout'], headers=headers, allow_redirects=True)
+    r = s.post(LOGIN_URL, data={'username': config['username'], 'password': config['password']}, timeout=config['http_timeout'], headers=headers, allow_redirects=True)
     if not r.ok:
         print('Anmeldung fehlgeschlagen! -> Abbruch')
         return
