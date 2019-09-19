@@ -48,7 +48,16 @@ Password des Onetz-Accounts
 ```
 epaper_edition
 ```
-E-Paper Edition (WN = Weiden, andere Editionen lassen sich aus dem Link "Gesamtausgabe herunterladen" ziehen. Falls jemand hierzu andere Editionscodes hat (z.B. für Tirschenreuth, Amberg, ..), würde es mich freuen, wenn Ihr Sie mir zukommen lassen würdet. Danke!)
+E-Paper Edition die geladen werden soll. Mögliche Werte:
+* 1sr (Sulzbach Rosenberger Zeitung)
+* 2az (Amberger Zeitung)
+* 3st (Tirschenreuth)
+* 4eb (Eschenbach)
+* 5ek (Erbendorf Kemnath)
+* 6sn (Schwandorf Nabburg)
+* 7so (Schwandorf Grenzwarte)
+* 8vo (Vohenstrauß)
+* 9wn (Weiden)
 ```
 pdf_base
 ```
