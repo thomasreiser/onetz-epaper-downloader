@@ -55,8 +55,8 @@ DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKi
 DEFAULT_HTTP_TIMEOUT = 360 # HTTP Timeout in Sekunden (Default-Wert)
 DEFAULT_MIN_SLEEP = 1 # Minimale Wartezeit/Sleep zwischen den Requests in Sekunden (Default-Wert)
 DEFAULT_MAX_SLEEP = 5 # Maximale Wartezeit/Sleep zwischen den Requests in Sekunden (Default-Wert)
-A_HREF_PATTERN = re.compile(r"\s*javascript:openIssue\s*\(\s*'(\w+)'\s*,\s*'(\d{8})'\s*,\s*'(\w{3})'\s*,\s*null\s*,\s*'.+'\s*,.*\)\s*;?\s*") # Regex zum Prüfen der Download-Links
-A_TITLE_PATTERN = re.compile(".*Hauptausgabe.*laden.*") # Regex zum Prüfen der Download-Link-Titel
+A_HREF_PATTERN = re.compile(r"\s*javascript:openIssue\s*\(\s*'(\w+)'\s*,\s*'(\d{8})'\s*,\s*'(\w{3})'\s*,\s*.*\s*,\s*'.+'\s*,.*\)\s*;?\s*") # Regex zum Prüfen der Download-Links
+A_TITLE_PATTERN = re.compile(".*usgabe.*laden.*") # Regex zum Prüfen der Download-Link-Titel
 
 
 
