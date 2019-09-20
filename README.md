@@ -19,7 +19,7 @@ Anzeigen der Hilfe:
 ```
 -h, --help
 ```
-Setzen des Erscheinungsdatums der zu ladenen Zeitung (Format: YYYMMDD, nicht gesetzt = heute):
+Setzen des Erscheinungsdatums der zu ladenen Zeitung (Format: YYYYMMDD, nicht gesetzt = heute):
 ```
 -d [Datum], --date [Datum]
 ```
