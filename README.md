@@ -90,7 +90,7 @@ Ist ein Wert bei *current_epaper_filename* hinterlegt und *current_epaper_symlin
 - Implementierung einer Logik zur automatisierten Generierung der JSON-Config
 
 ## Changelog
-#### 19.09.2019
+#### 20.09.2019
 - Unterstützung für neues Server-Backend (SSO etc.) von Onetz
 - Aktualisierung aller möglichen Codes für Zeitungseditionen
 
