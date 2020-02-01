@@ -49,13 +49,13 @@ import re
 VERSION = '2.0'
 LOGIN_URL_PREFIX = 'https://epapersso.onetz.de/auth/authorize'
 LOGIN_URL = LOGIN_URL_PREFIX + '?client_id=epaper' # Onetz Login-URL
-EPAPER_CONTINOUS_URL = 'https://zeitung.onetz.de/continous.act?lastDate=%d&daysBack=%d&region=%s' # Pfad zum Abholen der verfügbaren E-Paper
-EPAPER_ISSUE_URL = 'https://zeitung.onetz.de/issue.act?issueId=%s&mutationShortcut=%s&issueDate=%s&pdf=PDF' # Pfad zum Autorisieren des PDF-Downloads
+EPAPER_ARCHIVE_URL = 'https://zeitung.onetz.de/shelfDisplay.act?dateTo=%s&widgetIdStr=1040&region=%s' # Pfad zum Abholen der verfügbaren E-Paper
+EPAPER_ISSUE_URL = 'https://zeitung.onetz.de/issue.act?issueId=%s&issueMutation=%s&issueDate=%s&pdf=PDF' # Pfad zum Autorisieren des PDF-Downloads
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36" # User Agent (Default-Wert)
 DEFAULT_HTTP_TIMEOUT = 360 # HTTP Timeout in Sekunden (Default-Wert)
 DEFAULT_MIN_SLEEP = 1 # Minimale Wartezeit/Sleep zwischen den Requests in Sekunden (Default-Wert)
 DEFAULT_MAX_SLEEP = 5 # Maximale Wartezeit/Sleep zwischen den Requests in Sekunden (Default-Wert)
-A_HREF_PATTERN = re.compile(r"\s*javascript:openIssue\s*\(\s*'(\w+)'\s*,\s*'(\d{8})'\s*,\s*'(\w{3})'\s*,\s*.*\s*,\s*'.+'\s*,.*\)\s*;?\s*") # Regex zum Prüfen der Download-Links
+A_HREF_PATTERN = re.compile(r"\s*javascript:pdfDownloadClickHandler\s*\(\s*'\w+'\s*,\s*'(\d+)'\s*,\s*'(\w{3})'\s*,\s*'(\d{8})'\s*\)\s*") # Regex zum Prüfen der Download-Links
 A_TITLE_PATTERN = re.compile(".*usgabe.*laden.*") # Regex zum Prüfen der Download-Link-Titel
 
 
@@ -81,13 +81,12 @@ def download(configFile, timestamp, overwrite):
     today = fixDate(time.strftime('%Y%m%d'), False)
 
     # Delta zwischen heute und dem angefragten Datum anfordern
-    delta = (today - requestedDate).days
-    if delta < 0:
+    if (today - requestedDate).days < 0:
         print('Achtung: Übergebener Datumsparameter ist in der Zukunft. Setze Datum auf heute...')
-        delta = 0
         requestedDate = today
 
     requestedTimestamp = requestedDate.strftime('%Y%m%d')
+    requestedTimestampUrl = requestedDate.strftime('%Y-%m-%d')
     todayTimestamp = today.strftime('%Y%m%d')
     print('Zu herunterladende Gesamtausgabe: ' + requestedTimestamp)
 
@@ -158,7 +157,7 @@ def download(configFile, timestamp, overwrite):
     time.sleep(random.uniform(config['min_sleep'], config['max_sleep']))
 
     # Abholen des Download-Links für das PDF
-    r = s.get(EPAPER_CONTINOUS_URL % (delta, 1, config['epaper_edition']), timeout=config['http_timeout'], headers=headers, allow_redirects=True)
+    r = s.get(EPAPER_ARCHIVE_URL % (requestedTimestampUrl, config['epaper_edition']), timeout=config['http_timeout'], headers=headers, allow_redirects=True)
     if not r.ok:
         print('Download-Links für E-Paper konnten nicht geladen werden! -> Abbruch')
         return
@@ -236,8 +235,8 @@ def tryGetEPaper(href, title, timestamp, edition):
     
     # Auslesen der JS-Paramter
     issueId = m.group(1)
-    date = m.group(2)
-    mutation = m.group(3)
+    mutation = m.group(2)
+    date = m.group(3)
 
     # Ungültigen Link verwerfen
     if date != timestamp or mutation.lower() != edition.lower():
