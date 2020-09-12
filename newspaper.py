@@ -46,7 +46,7 @@ import re
 
 
 # Interne Konstanten
-VERSION = '2.0'
+VERSION = '2.1'
 LOGIN_URL_PREFIX = 'https://epapersso.onetz.de/auth/authorize'
 LOGIN_URL = LOGIN_URL_PREFIX + '?client_id=epaper' # Onetz Login-URL
 EPAPER_ARCHIVE_URL = 'https://zeitung.onetz.de/shelfDisplay.act?dateTo=%s&widgetIdStr=1040&region=%s' # Pfad zum Abholen der verfügbaren E-Paper
@@ -139,7 +139,7 @@ def download(configFile, timestamp, overwrite):
             return
 
     # Prüfen, ob PDF schon vorhanden ist
-    pdfFile = config['pdf_base'] + timestamp + '.pdf'
+    pdfFile = os.path.join(config['pdf_base'], timestamp + '.pdf')
     if not overwrite and os.path.isfile(pdfFile):
         print('E-Paper für ' + timestamp + ' wurde bereits heruntergeladen -> Abbruch')
         return
@@ -232,7 +232,7 @@ def tryGetEPaper(href, title, timestamp, edition):
     m = A_HREF_PATTERN.match(href)
     if m is None:
         return None
-    
+
     # Auslesen der JS-Paramter
     issueId = m.group(1)
     mutation = m.group(2)

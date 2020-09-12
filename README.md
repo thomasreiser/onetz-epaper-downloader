@@ -91,6 +91,10 @@ Ist ein Wert bei *current_epaper_filename* hinterlegt und *current_epaper_symlin
 
 ## Changelog
 
+#### 12.09.2020
+- Dockerfile zum Ausführen des Scripts in einem Container
+- Kleine Codeoptimierungen
+
 #### 01.02.2020
 - Kompatibilität zu Redesign des Onetz E-Paper-Bereichs
 
